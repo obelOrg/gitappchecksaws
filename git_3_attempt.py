@@ -1,21 +1,29 @@
-import github3
+import time
+import jwt
+import os
+import requests
+with open(os.path.normpath(os.path.expanduser('.//.certs//github//gitapppr.pem')),'r') as cert_file:
+    private_key = cert_file.read()
+def app_headers():
 
+    time_since_epoch_in_seconds = int(time.time())
+    
+    payload = {
+      # issued at time
+      'iat': time_since_epoch_in_seconds,
+      # JWT expiration time (10 minute maximum)
+      'exp': time_since_epoch_in_seconds + (10 * 60),
+      # GitHub App's identifier
+      'iss': '4397'
+    }
 
+    actual_jwt = jwt.encode(payload, private_key, algorithm='RS256')
 
-GITHUB_PRIVATE_KEY = open('.//.certs//github//gitapppr.pem', 'r').read()
-GITHUB_APP_IDENTIFIER = "184311"
+    headers = {"Authorization": "Bearer {}".format(actual_jwt),
+               "Accept": "application/vnd.github.machine-man-preview+json"}
+    return headers
 
-gh = github3.github.GitHub()
+resp = requests.get('https://api.github.com/app', headers=app_headers())
 
-# Login as app
-gh.login_as_app(GITHUB_PRIVATE_KEY.encode(), GITHUB_APP_IDENTIFIER)
-
-# Login to the installation, assuming only a single one
-installations = [installation.id for installation in gh.app_installations()]
-gh.login_as_app_installation(GITHUB_PRIVATE_KEY.encode(), GITHUB_APP_IDENTIFIER, installations[0])
-
-# Access information
-# e.g. the rate limit
-print(gh.rate_limit())
-# or access token to checkout the repository
-print(gh.session.auth.token)
+print('Code: ', resp.status_code)
+print('Content: ', resp.content.decode())
